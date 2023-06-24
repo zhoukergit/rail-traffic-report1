@@ -1,0 +1,47 @@
+server:
+  port: 9001
+
+spring:
+  application:
+    name: cloud-gateway
+
+  cloud:
+    gateway:
+      #      跨域配置文件,这个和下面的default-filters都不能少
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedHeaders: "*"
+            allowedMethods: "*"
+            allowCredentials: true
+      discovery:
+        locator:
+          enabled: true #开启后,新增一种访问方式:localhost:9527/服务名/资源路径 原访问方式为localhost:9527/资源路径 #是否使用service-id 的小写， 默认是大写。
+          lower-case-service-id: true #是否启动服务名小写
+      routes:
+        - id: service-detail #payment_route    #路由的ID，没有固定规则但要求唯一，建议配合服务名
+          uri: lb://service-detail       #匹配后提供服务的路由地址
+          predicates:
+            - Path=/detail/** # 断言，路径相匹配的进行路由
+        - id: service-detail2 #payment_route    #路由的ID，没有固定规则但要求唯一，建议配合服务名
+          uri: lb://service-detail        #匹配后提供服务的路由地址
+          predicates:
+            - Path=/account/** # 断言，路径相匹配的进行路由
+        - id: service-statistic #payment_route    #路由的ID，没有固定规则但要求唯一，建议配合服务名
+          uri: lb://service-statistic        #匹配后提供服务的路由地址
+          predicates:
+            - Path=/statistic/**         # 断言，路径相匹配的进行路由
+        - id: service-ucenter #payment_route    #路由的ID，没有固定规则但要求唯一，建议配合服务名
+          uri: lb://service-ucenter        #匹配后提供服务的路由地址
+          predicates:
+            - Path=/ucenter/**         # 断言，路径相匹配的进行路由
+
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+
+
+
+
+

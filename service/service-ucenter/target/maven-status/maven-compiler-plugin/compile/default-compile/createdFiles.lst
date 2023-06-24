@@ -1,0 +1,6 @@
+com\example\educenter\entity\Admin.class
+com\example\educenter\mapper\UcenterMemberMapper.class
+com\example\educenter\service\impl\UcenterMemberServiceImpl.class
+com\example\educenter\ServiceUcApplication.class
+com\example\educenter\controller\UcenterMemberController.class
+com\example\educenter\service\UcenterMemberService.class

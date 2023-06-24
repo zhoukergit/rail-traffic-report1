@@ -1,0 +1,4 @@
+com\example\gateway\config\CrossConfig.class
+com\example\gateway\GatewayApplication.class
+com\example\gateway\util\JwtUtils.class
+com\example\gateway\filter\AuthGlobalFilter.class

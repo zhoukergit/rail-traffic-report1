@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.statistic.mapper.TerminalRevenueStatisticMapper">
+
+    <select id="selectTerminalRevenueStatistic" resultType="com.example.statistic.entity.bo.TerminalRevenueBo">
+        select card_type
+        , terminal_no
+        , line
+        , station
+        , sum(total) as total
+        , sum(card_sell_count) as sellCount
+        , sum(card_sell_deposit) as sellDeposit
+        , sum(top_up_count) as topUpCount
+        , sum(top_up_amount) as topUpAmount
+        , sum(card_return_amount) as returnCount
+        , sum(card_return_count) as returnAmount
+        from terminal_revenue_statistic
+        ${ew.customSqlSegment}
+        group by terminal_no, card_type
+        order by terminal_no,card_type;
+    </select>
+</mapper>

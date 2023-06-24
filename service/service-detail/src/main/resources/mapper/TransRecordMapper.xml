@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.detail.mapper.TransRecordMapper">
+    <select id="getCardTransDetails" resultType="CardDetailsBo" parameterType="CardTransDetailsQuery">
+        select * from trans_record tr left join card_info ci on tr.card_no = ci.card_no
+        <where>
+            <if test="startTime != null">
+                and trans_time <![CDATA[ >= ]]> #{startTime}
+            </if>
+            <if test="endTime != null">
+                and trans_time <![CDATA[ <= ]]> #{endTime}
+            </if>
+            <if test="transType != null">
+                and trans_type = #{transType}
+            </if>
+            <if test="ticketType != null">
+                and tr.ticket_type = #{ticketType}
+            </if>
+            <if test="userId != null">
+                and user_id = #{userId}
+            </if>
+            <if test="terminalNo != null">
+                and tr.terminal_no = #{terminalNo}
+            </if>
+        </where>
+        order by trans_time desc
+        limit (#{current}-1)*#{size},#{size}
+    </select>
+
+    <!--${ew.customSqlSegment},mybatis-plus会自动进行分页和条件拼接,误报为正常现象-->
+    <select id="getCardTransDetailsPage" resultType="com.example.detail.entity.bo.CardDetailsBo">
+        select *
+        from trans_record ${ew.customSqlSegment}
+    </select>
+    <select id="getCodePaymentDetailsPage" resultType="com.example.detail.entity.bo.CodePaymentDetailsBo">
+        select *
+        from trans_record tr
+        left join pay_union pu on tr.out_trade_no = pu.out_trade_no
+        <where>
+            data_type=5
+            <if test="query.voucherNo!=null">
+            and pu.voucher_no=#{query.voucherNo}
+            </if>
+            <if test="query.startTime != null">
+                and trans_time <![CDATA[ >= ]]> #{query.startTime}
+            </if>
+            <if test="query.endTime != null">
+                and trans_time <![CDATA[ <= ]]> #{query.endTime}
+            </if>
+        </where>
+        order by trans_time desc
+    </select>
+    <select id="getCardPaymentDetailsPage" resultType="com.example.detail.entity.bo.CardPaymentDetailsBo">
+        select *
+        from trans_record ${ew.customSqlSegment}
+    </select>
+
+    <select id="selectBaseUserStatisticFromTransRecord"
+            resultType="com.example.common.entity.dto.UserStatisticDto">
+        select data_type, count(*) as count, sum(trans_amount) as amount, terminal_no as terminalNo, user_id as userId
+        from trans_record
+        where date(trans_time) = #{date}
+          and data_type in (1, 2, 3)
+        group by data_type, terminal_no
+        order by terminal_no, data_type
+    </select>
+    <select id="selectCardIssueStatistic" resultType="com.example.common.entity.dto.CardIssueStatisticDto">
+        <!--or null表示条件不成立时,变成count(null),即不统计该条数据-->
+        select trans_time as date
+        ,count(ticket_type = '储值票' or null) as storeCardCount
+        ,count(ticket_type = '普通卡' or null) as normalCardCount
+        ,count(ticket_type = '学生卡' or null) as studentCardCount
+        ,count(ticket_type = '爱心卡' or null) as loveCardCount
+        from trans_record
+        where data_type = 1 and date(trans_time) = #{date}
+
+
+    </select>
+    <select id="selectTerminalRevenueDto" resultType="com.example.common.entity.dto.TerminalRevenueDto">
+        select terminal_no
+        , date(trans_time) as date
+        , trans_type as transType
+        , ticket_type as cardType
+        , ifnull(count(data_type = 1 or null), 0) as cardSellCount
+        , sum(if(data_type = 1, trans_amount, 0)) as cardSellDeposit
+        , ifnull(count(data_type = 2 or null), 0) as cardReturnCount
+        , sum(if(data_type = 2, trans_amount, 0)) as cardReturnAmount
+        , ifnull(count(data_type = 3 or null), 0) as topUpCount
+        , sum(if(data_type = 3, trans_amount, 0)) as topUpAmount
+        <!--这里有个坑,如果是退卡,那么总收入应该相减-->
+        , sum(if(data_type=2,-trans_amount,trans_amount)) as total
+        from trans_record
+        where date(trans_time) = #{date}
+        and data_type in (1, 2, 3)
+        group by terminal_no, trans_type, ticket_type
+        order by terminal_no,trans_type,ticket_type
+    </select>
+    <select id="selectTotalRevenueDto" resultType="com.example.common.entity.dto.TotalRevenueDto">
+        <!--tvm现金押金,现金充值,电子支付押金,电子支付充值-->
+        select date(trans_time) as date,
+        sum(if(terminal_no like('0401%') and trans_type = 1 and data_type=1,trans_amount,null) ) as tvmCashDeposit,
+        sum(if(terminal_no like('0401%') and trans_type = 1 and data_type=3,trans_amount,null) ) as tvmCashTopUp,
+        sum(if(terminal_no like('0401%') and trans_type = 2 and data_type=1,trans_amount,null) ) as tvmElectricDeposit,
+        sum(if(terminal_no like('0401%') and trans_type = 2 and data_type=3,trans_amount,null) ) as tvmElectricTopUp,
+        sum(if(terminal_no like('B00%') and trans_type = 1 and data_type=1,trans_amount,null) ) as bomCashDeposit,
+        sum(if(terminal_no like('B00%') and trans_type = 1 and data_type=3,trans_amount,null) ) as bomCashTopUp,
+        sum(if(terminal_no like('B00%') and trans_type = 2 and data_type=1,trans_amount,null) ) as bomElectricDeposit,
+        sum(if(terminal_no like('B00%') and trans_type = 2 and data_type=3,trans_amount,null) ) as bomElectricTopUp,
+        sum(if(data_type=4 and trans_type = 3,trans_amount,null)) as publicSell,
+        sum(if(data_type=4 and trans_type = 3,trans_amount,null)) as publicConsumption
+        from trans_record
+        where date(trans_time) = #{date}
+    </select>
+
+
+</mapper>

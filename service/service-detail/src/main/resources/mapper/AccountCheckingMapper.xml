@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.detail.mapper.AccountCheckingMapper">
+
+    <select id="checkAccountAnomaly" resultType="AccountAnomalyBo">
+        select tr.out_trade_no transOutTradeNo
+        , tr.trans_time transTime
+        , tr.trans_amount transAmount
+        , tr.trans_sn transSn
+        , db.order_type bankOrderType
+        , db.order_status bankOrderStatus
+        , db.out_refund_no bankOutRefundNo
+        , db.refund_status bankRefundStatus
+        , db.total_fee bankTotalFee
+        , pu.order_type sysOrderType
+        , pu.order_status sysOrderStatus
+        , pu.total_fee sysTotalFee
+        from downloaded_bill db
+        join trans_record tr on tr.out_trade_no = db.out_trade_no
+        join pay_union pu on tr.out_trade_no = pu.out_trade_no
+        <if test="startTime != null">
+            and tr.trans_time <![CDATA[ >= ]]> #{startTime}
+        </if>
+        <if test="endTime != null">
+            and tr.trans_time <![CDATA[ <= ]]> #{endTime}
+        </if>
+        orderBy tr.trans_time desc
+    </select>
+
+
+    <select id="selectAccountStatistics" resultType="com.example.detail.entity.bo.AccountStatisticBo">
+        with t1 as (select date(trans_time) as transDate
+        , count(total_fee) as bankTotalCount
+        , sum(if(order_status = 1, total_fee, 0)) as bankIncomeAmount
+        , sum(if(order_status = 2 and refund_status = 1, total_fee, 0)) as bankRefundAmount
+        , sum(if(order_status = 1, total_fee, 0)) -
+        sum(if(order_status = 2 and refund_status = 1, total_fee, 0)) as bankTotalAmount
+        from downloaded_bill
+        <where>
+            <if test="startDate!=null">date(trans_time)<![CDATA[ >= ]]>#{startDate}</if>
+            and
+            <if test="endDate!=null">#{endDate}<![CDATA[ >= ]]>date(trans_time)</if>
+        </where>
+        group by transDate
+        order by transDate desc)
+        , t2 as (
+        select date(substr(voucher_no, 1, 8)) as sysTransDate
+        , count(total_fee) as sysTotalCount
+        , sum(if(order_status = 1, total_fee, 0)) as sysIncomeAmount
+        , sum(if(order_status = 2, total_fee, 0)) as sysRefundAmount
+        , sum(if(order_status = 1, total_fee, 0)) -
+        sum(if(order_status = 2, total_fee, 0)) as sysTotalAmount
+        from pay_union
+        <where>
+            <if test="startDate!=null">date(substr(voucher_no, 1, 8))<![CDATA[ >= ]]>#{startDate}</if>
+            and
+            <if test="endDate!=null">#{endDate}<![CDATA[ >= ]]>date(substr(voucher_no, 1, 8))</if>
+        </where>
+        group by sysTransDate
+        order by sysTransDate desc)
+        select *
+        from t1
+        join t2 on t1.transDate = t2.sysTransDate
+    </select>
+</mapper>
